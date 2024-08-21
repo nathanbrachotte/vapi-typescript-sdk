@@ -11,6 +11,7 @@
     "http",
     "rest"
   ],
+  "main": "dist/index.js",
   "homepage": "https://github.com/nathanbrachotte/vapi-typescript-sdk",
   "bugs": {
     "url": "https://github.com/nathanbrachotte/vapi-typescript-sdk/issues"
@@ -25,12 +26,18 @@
   ],
   "type": "module",
   "scripts": {
-    "ci": "npm run build",
+    "ci": "npm run build && npm run check-format && npm run check-exports && npm run lint && npm run test",
     "build": "tsc",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "check-exports": "attw --pack .",
+    "check-format": "prettier --check .",
+    "test": "vitest run",
+    "test:dev": "vitest"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.4",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
   }
 }
