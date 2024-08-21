@@ -19,7 +19,7 @@
   "author": "Nathan Brachotte <hey+vts@nathanbrachotte.dev> (https://nathanbrachotte.dev)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mattpocock/tt-package-demo.git"
+    "url": "git+https:///nathanbrachotte/vapi-typescript-sdk"
   },
   "files": [
     "dist"
