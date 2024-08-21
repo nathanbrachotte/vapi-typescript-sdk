@@ -32,10 +32,12 @@
     "check-exports": "attw --pack .",
     "check-format": "prettier --check .",
     "test": "vitest run",
-    "test:dev": "vitest"
+    "test:dev": "vitest",
+    "local-release": "npm run ci && changeset version && changeset publish"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.4",
+    "@changesets/cli": "^2.27.7",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
