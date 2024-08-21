@@ -1,0 +1,36 @@
+{
+  "name": "vapi-typescript-sdk",
+  "version": "0.0.1",
+  "description": "Interact with Vapi API in a type-safe way",
+  "keywords": [
+    "vapi",
+    "api",
+    "typescript",
+    "sdk",
+    "client",
+    "http",
+    "rest"
+  ],
+  "homepage": "https://github.com/nathanbrachotte/vapi-typescript-sdk",
+  "bugs": {
+    "url": "https://github.com/nathanbrachotte/vapi-typescript-sdk/issues"
+  },
+  "author": "Nathan Brachotte <hey+vts@nathanbrachotte.dev> (https://nathanbrachotte.dev)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattpocock/tt-package-demo.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "ci": "npm run build",
+    "build": "tsc",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4"
+  }
+}
