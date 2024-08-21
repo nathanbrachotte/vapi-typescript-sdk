@@ -1,6 +1,6 @@
 {
   "name": "vapi-typescript-sdk",
-  "version": "0.0.2",
+  "version": "1.0.0",
   "description": "Interact with Vapi API in a type-safe way",
   "keywords": [
     "vapi",
@@ -33,13 +33,22 @@
     "check-format": "prettier --check .",
     "test": "vitest run",
     "test:dev": "vitest",
+    "schema:fetch": "tsx bin/downloadSchema.ts",
+    "schema:prepare": "tsx bin/fixSchema.ts",
+    "codegen:generate": "npx openapi-typescript ./src/generated/fixed-vapi-schema.json -o ./src/generated/vapiOpenApi.ts",
+    "codegen:all": "npm run schema:fetch && npm run schema:prepare && npm run codegen:generate",
     "local-release": "npm run ci && changeset version && changeset publish"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.15.4",
     "@changesets/cli": "^2.27.7",
+    "openapi-typescript": "^7.0.0-rc.1",
     "prettier": "^3.3.3",
+    "tsx": "^4.17.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.11.1"
   }
 }
