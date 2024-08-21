@@ -1,6 +1,6 @@
 {
   "name": "vapi-typescript-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Interact with Vapi API in a type-safe way",
   "keywords": [
     "vapi",
