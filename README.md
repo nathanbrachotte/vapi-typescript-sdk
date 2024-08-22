@@ -20,4 +20,13 @@ export const { GET, POST, PUT, PATCH, DELETE } = vapiClient({
     "Content-Type": "application/json",
   },
 });
+
+// Fully typed + Autocompletion 🎉
+const calls = await GET("/call", {
+  params: {
+    query: {
+      limit: 1000,
+    },
+  },
+});
 ```
