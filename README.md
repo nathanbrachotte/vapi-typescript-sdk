@@ -12,7 +12,7 @@ npm add vapi-typescript-sdk
 
 
 ## Use
-```bash
+```ts
 import { vapiClient } from "vapi-typescript-sdk";
 
 export const { GET, POST, PUT, PATCH, DELETE } = vapiClient({
