@@ -10,19 +10,19 @@ To get started, install the package and refer to the documentation for usage exa
 npm add vapi-typescript-sdk
 ```
 
-
 ## Use
+
 ```ts
-import { vapiClient } from "vapi-typescript-sdk";
+import { vapiClient } from 'vapi-typescript-sdk';
 
 export const { GET, POST, PUT, PATCH, DELETE } = vapiClient({
   headers: {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   },
 });
 
 // Fully typed + Autocompletion 🎉
-const calls = await GET("/call", {
+const calls = await GET('/call', {
   params: {
     query: {
       limit: 1000,
