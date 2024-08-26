@@ -3077,7 +3077,7 @@
             "type": "number",
             "description": "This is the timeout in seconds for the request to your server. Defaults to 20 seconds.\n\n@default 20",
             "minimum": 1,
-            "maximum": 20,
+            "maximum": 60,
             "example": 20
           },
           "url": {
@@ -4845,29 +4845,40 @@
           "model"
         ]
       },
-      "AzureVoice": {
+      "FormatPlan": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
+          "enabled": {
             "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
+            "description": "This determines whether the chunk is formatted before being sent to the voice provider. This helps with enunciation. This includes phone numbers, emails and addresses. Default `true`.\n\nUsage:\n- To rely on the voice provider's formatting logic, set this to `false`.\n- To use ElevenLabs's `enableSsmlParsing` feature, set this to `false`.\n\nIf `voice.chunkPlan.enabled` is `false`, this is automatically `false` since there's no chunk to format.\n\n@default true",
             "example": true
           },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
+          "numberToDigitsCutoff": {
             "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
+            "description": "This is the cutoff after which a number is converted to individual digits instead of being spoken as words.\n\nExample:\n- If cutoff 2025, \"12345\" is converted to \"1 2 3 4 5\" while \"1200\" is converted to \"twelve hundred\".\n\nUsage:\n- If your use case doesn't involve IDs like zip codes, set this to a high value.\n- If your use case involves IDs that are shorter than 5 digits, set this to a lower value.\n\n@default 2025",
+            "minimum": 0,
+            "example": 2025
+          }
+        }
+      },
+      "ChunkPlan": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "This determines whether the model output is chunked before being sent to the voice provider. Default `true`.\n\nUsage:\n- To rely on the voice provider's audio generation logic, set this to `false`.\n- If seeing issues with quality, set this to `true`.\n\nIf disabled, Vapi-provided audio control tokens like <flush /> will not work.\n\n@default true",
+            "example": true
+          },
+          "minCharacters": {
+            "type": "number",
+            "description": "This is the minimum number of characters in a chunk.\n\nUsage:\n- To increase quality, set this to a higher value.\n- To decrease latency, set this to a lower value.\n\n@default 30",
             "minimum": 1,
             "maximum": 80,
             "example": 30
           },
-          "inputPunctuationBoundaries": {
+          "punctuationBoundaries": {
             "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
+            "description": "These are the punctuations that are considered valid boundaries for a chunk to be created.\n\nUsage:\n- To increase quality, constrain to fewer boundaries.\n- To decrease latency, enable all.\n\nDefault is automatically set to balance the trade-off between quality and latency based on the provider.",
             "enum": [
               "。",
               "，",
@@ -4922,6 +4933,19 @@
               ]
             }
           },
+          "formatPlan": {
+            "description": "This is the plan for formatting the chunk before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FormatPlan"
+              }
+            ]
+          }
+        }
+      },
+      "AzureVoice": {
+        "type": "object",
+        "properties": {
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -4957,6 +4981,14 @@
             "description": "This is the speed multiplier that will be used.",
             "minimum": 0.5,
             "maximum": 2
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -4967,80 +4999,6 @@
       "CartesiaVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5079,6 +5037,14 @@
           "voiceId": {
             "type": "string",
             "description": "This is the provider-specific ID that will be used."
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5089,80 +5055,6 @@
       "DeepgramVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5201,6 +5093,14 @@
                 "title": "Deepgram Voice ID"
               }
             ]
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5211,80 +5111,6 @@
       "ElevenLabsVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5382,6 +5208,14 @@
             "minimum": 0,
             "maximum": 2,
             "example": 0
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5392,80 +5226,6 @@
       "LMNTVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5501,6 +5261,14 @@
             "minimum": 0.25,
             "maximum": 2,
             "example": null
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5511,80 +5279,6 @@
       "NeetsVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5613,6 +5307,14 @@
                 "title": "Neets Voice ID"
               }
             ]
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5623,80 +5325,6 @@
       "OpenAIVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5745,6 +5373,14 @@
             "minimum": 0.25,
             "maximum": 4,
             "example": null
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5755,80 +5391,6 @@
       "PlayHTVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -5919,6 +5481,14 @@
             "minimum": 1,
             "maximum": 2,
             "example": null
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -5929,80 +5499,6 @@
       "RimeAIVoice": {
         "type": "object",
         "properties": {
-          "inputPreprocessingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the model output is preprocessed into chunks before being sent to the voice provider.\n\nDefault `true` because voice generation sounds better with chunking (and reformatting them).\n\nTo send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.\n\nIf disabled, vapi-provided audio control tokens like <flush /> will not work.",
-            "example": true
-          },
-          "inputReformattingEnabled": {
-            "type": "boolean",
-            "description": "This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.\n\nDefault `true` because voice generation sounds better with reformatting.\n\nTo disable chunk reformatting, set this to `false`.\n\nTo disable chunking completely, set `inputPreprocessingEnabled` to `false`.",
-            "example": true
-          },
-          "inputMinCharacters": {
-            "type": "number",
-            "description": "This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.\n\nIncreasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.\n\nDecreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.",
-            "minimum": 1,
-            "maximum": 80,
-            "example": 30
-          },
-          "inputPunctuationBoundaries": {
-            "type": "string",
-            "description": "These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.\n\nConstraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].",
-            "enum": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              ")",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "example": [
-              "。",
-              "，",
-              ".",
-              "!",
-              "?",
-              ";",
-              "،",
-              "۔",
-              "।",
-              "॥",
-              "|",
-              "||",
-              ",",
-              ":"
-            ],
-            "items": {
-              "type": "string",
-              "enum": [
-                "。",
-                "，",
-                ".",
-                "!",
-                "?",
-                ";",
-                ")",
-                "،",
-                "۔",
-                "।",
-                "॥",
-                "|",
-                "||",
-                ",",
-                ":"
-              ]
-            }
-          },
           "fillerInjectionEnabled": {
             "type": "boolean",
             "description": "This determines whether fillers are injected into the model output before inputting it into the voice provider.\n\nDefault `false` because you can achieve better results with prompting the model.",
@@ -6125,6 +5621,14 @@
             "description": "This is the speed multiplier that will be used.",
             "minimum": 0.1,
             "example": null
+          },
+          "chunkPlan": {
+            "description": "This is the plan for chunking the model output before it is sent to the voice provider.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ChunkPlan"
+              }
+            ]
           }
         },
         "required": [
@@ -6337,24 +5841,24 @@
           }
         }
       },
-      "MinWaitBeforeModelRequestConfiguration": {
+      "TranscriptionEndpointingPlan": {
         "type": "object",
         "properties": {
-          "onTranscriptionWithPunctuationSeconds": {
+          "onPunctuationSeconds": {
             "type": "number",
             "description": "The minimum number of seconds to wait after transcription ending with punctuation before sending a request to the model. Defaults to 0.1.\n\nThis setting exists because the transcriber punctuates the transcription when it's more confident that customer has completed a thought.\n\n@default 0.1",
             "minimum": 0,
             "maximum": 3,
             "example": 0.1
           },
-          "onTranscriptionWithoutPunctuationSeconds": {
+          "onNoPunctuationSeconds": {
             "type": "number",
             "description": "The minimum number of seconds to wait after transcription ending without punctuation before sending a request to the model. Defaults to 1.5.\n\nThis setting exists to catch the cases where the transcriber was not confident enough to punctuate the transcription, but the customer is done and has been silent for a long time.\n\n@default 1.5",
             "minimum": 0,
             "maximum": 3,
             "example": 1.5
           },
-          "onTranscriptionWithNumberSeconds": {
+          "onNumberSeconds": {
             "type": "number",
             "description": "The minimum number of seconds to wait after transcription ending with a number before sending a request to the model. Defaults to 0.4.\n\nThis setting exists because the transcriber will sometimes punctuate the transcription ending with a number, even though the customer hasn't uttered the full number. This happens commonly for long numbers when the customer reads the number in chunks.\n\n@default 0.5",
             "minimum": 0,
@@ -6363,40 +5867,56 @@
           }
         }
       },
-      "PipelineConfiguration": {
+      "StartSpeakingPlan": {
         "type": "object",
         "properties": {
-          "minWaitBeforeSpeakingSeconds": {
+          "waitSeconds": {
             "type": "number",
-            "description": "The minimum number of seconds after customer speech before the assistant starts speaking. Defaults to 0.4.\n\nThis setting helps avoid the assistant jumping in accidentally when the customer is still speaking but pauses for a moment. If customer is expected to take long pauses, set this to a higher value.\n\n@default 0.4",
+            "description": "This is how long assistant waits before speaking. Defaults to 0.4.\n\nThis is the minimum it will wait but if there is latency is the pipeline, this minimum will be exceeded. This is really a stopgap in case the pipeline is moving too fast.\n\nExample:\n- If model generates tokens and voice generates bytes within 100ms, the pipeline still waits 300ms before outputting speech.\n\nUsage:\n- If the customer is taking long pauses, set this to a higher value.\n- If the assistant is accidentally jumping in too much, set this to a higher value.\n\n@default 0.4",
             "minimum": 0,
             "maximum": 5,
             "example": 0.4
           },
-          "numWordsToInterruptAssistant": {
+          "smartEndpointingEnabled": {
+            "type": "boolean",
+            "description": "This determines if a customer speech is considered done (endpointing) using the VAP model on customer's speech. This is good for middle-of-thought detection.\n\nOnce an endpoint is triggered, the request is sent to `assistant.model`.\n\nDefault `false` since experimental.\n\n@default false",
+            "example": false
+          },
+          "transcriptionEndpointingPlan": {
+            "description": "This determines how a customer speech is considered done (endpointing) using the transcription of customer's speech.\n\nOnce an endpoint is triggered, the request is sent to `assistant.model`.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TranscriptionEndpointingPlan"
+              }
+            ]
+          }
+        }
+      },
+      "StopSpeakingPlan": {
+        "type": "object",
+        "properties": {
+          "numWords": {
             "type": "number",
-            "description": "The number of words to wait for before interrupting the assistant.\n\nWords like \"stop\", \"actually\", \"no\", etc. will always interrupt immediately regardless of this value.\n\nWords like \"okay\", \"yeah\", \"right\" will never interrupt.\n\nWhen set to 0, it will rely solely on the VAD (Voice Activity Detector) and will not wait for any transcription. Defaults to this (0).\n\n@default 0",
+            "description": "This is the number of words that the customer has to say before the assistant will stop talking.\n\nWords like \"stop\", \"actually\", \"no\", etc. will always interrupt immediately regardless of this value.\n\nWords like \"okay\", \"yeah\", \"right\" will never interrupt.\n\nWhen set to 0, `voiceSeconds` is used in addition to the transcriptions to determine the customer has started speaking.\n\nDefaults to 0.\n\n@default 0",
             "minimum": 0,
             "maximum": 10,
             "example": 0
           },
-          "smartTurnDetectionEnabled": {
-            "type": "boolean",
-            "description": "This determines if the VAP model is to be used to detect endpoints and backchannels.\n\nDefault `false` since experimental.\n@default false",
-            "example": false
+          "voiceSeconds": {
+            "type": "number",
+            "description": "This is the seconds customer has to speak before the assistant stops talking. This uses the VAD (Voice Activity Detection) spike to determine if the customer has started speaking.\n\nConsiderations:\n- A lower value might be more responsive but could potentially pick up non-speech sounds.\n- A higher value reduces false positives but might slightly delay the detection of speech onset.\n\nThis is only used if `numWords` is set to 0.\n\nDefaults to 0.2\n\n@default 0.2",
+            "minimum": 0,
+            "maximum": 0.5,
+            "example": 0.2
           },
-          "minWaitBeforeModelRequestConfiguration": {
-            "description": "The minimum number of seconds after transcription before sending a request to the model.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/MinWaitBeforeModelRequestConfiguration"
-              }
-            ]
+          "backoffSeconds": {
+            "type": "number",
+            "description": "This is the seconds to wait before the assistant will start talking again after being interrupted.\n\nDefaults to 1.\n\n@default 1",
+            "minimum": 0,
+            "maximum": 10,
+            "example": 1
           }
-        },
-        "required": [
-          "minWaitBeforeModelRequestConfiguration"
-        ]
+        }
       },
       "CreateAssistantDTO": {
         "type": "object",
@@ -6636,10 +6156,10 @@
           },
           "maxDurationSeconds": {
             "type": "number",
-            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 1800 (~30 minutes)",
+            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 600 (10 minutes)",
             "minimum": 10,
-            "maximum": 3600,
-            "example": 1800
+            "maximum": 21600,
+            "example": 600
           },
           "backgroundSound": {
             "type": "string",
@@ -6750,11 +6270,19 @@
               }
             ]
           },
-          "pipelineConfiguration": {
-            "description": "This is the pipeline configuration for assistant's calls.",
+          "startSpeakingPlan": {
+            "description": "This is the plan for when the assistant should start talking.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to start talking after the customer is done speaking.\n- The assistant is too fast to start talking after the customer is done speaking.\n- The assistant is so fast that it's actually interrupting the customer.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/PipelineConfiguration"
+                "$ref": "#/components/schemas/StartSpeakingPlan"
+              }
+            ]
+          },
+          "stopSpeakingPlan": {
+            "description": "This is the plan for when assistant should stop talking on customer interruption.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to recognize customer's interruption.\n- The assistant is too fast to recognize customer's interruption.\n- The assistant is getting interrupted by phrases that are just acknowledgments.\n- The assistant is getting interrupted by background noises.\n- The assistant is not properly stopping -- it starts talking right after getting interrupted.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StopSpeakingPlan"
               }
             ]
           },
@@ -7005,10 +6533,10 @@
           },
           "maxDurationSeconds": {
             "type": "number",
-            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 1800 (~30 minutes)",
+            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 600 (10 minutes)",
             "minimum": 10,
-            "maximum": 3600,
-            "example": 1800
+            "maximum": 21600,
+            "example": 600
           },
           "backgroundSound": {
             "type": "string",
@@ -7123,11 +6651,19 @@
               }
             ]
           },
-          "pipelineConfiguration": {
-            "description": "This is the pipeline configuration for assistant's calls.",
+          "startSpeakingPlan": {
+            "description": "This is the plan for when the assistant should start talking.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to start talking after the customer is done speaking.\n- The assistant is too fast to start talking after the customer is done speaking.\n- The assistant is so fast that it's actually interrupting the customer.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/PipelineConfiguration"
+                "$ref": "#/components/schemas/StartSpeakingPlan"
+              }
+            ]
+          },
+          "stopSpeakingPlan": {
+            "description": "This is the plan for when assistant should stop talking on customer interruption.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to recognize customer's interruption.\n- The assistant is too fast to recognize customer's interruption.\n- The assistant is getting interrupted by phrases that are just acknowledgments.\n- The assistant is getting interrupted by background noises.\n- The assistant is not properly stopping -- it starts talking right after getting interrupted.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StopSpeakingPlan"
               }
             ]
           },
@@ -7283,7 +6819,7 @@
           },
           "name": {
             "type": "string",
-            "description": "This is the name of the customer. This is just for your own reference.",
+            "description": "This is the name of the customer. This is just for your own reference.\n\nFor SIP inbound calls, this is extracted from the `From` SIP header with format `\"Display Name\" <sip:username@domain>`.",
             "maxLength": 40
           }
         }
@@ -7593,6 +7129,7 @@
               "assistant-not-found",
               "db-error",
               "no-server-available",
+              "license-check-failed",
               "pipeline-error-openai-llm-failed",
               "pipeline-error-azure-openai-llm-failed",
               "pipeline-error-groq-llm-failed",
@@ -7663,6 +7200,7 @@
               "pipeline-error-eleven-labs-voice-disabled-by-owner",
               "pipeline-error-eleven-labs-blocked-account-in-probation",
               "pipeline-error-eleven-labs-blocked-content-against-their-policy",
+              "pipeline-error-eleven-labs-missing-samples-for-voice-clone",
               "pipeline-error-playht-request-timed-out",
               "pipeline-error-playht-invalid-voice",
               "pipeline-error-playht-unexpected-error",
@@ -8234,10 +7772,10 @@
           },
           "maxDurationSeconds": {
             "type": "number",
-            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 1800 (~30 minutes)",
+            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 600 (10 minutes)",
             "minimum": 10,
-            "maximum": 3600,
-            "example": 1800
+            "maximum": 21600,
+            "example": 600
           },
           "backgroundSound": {
             "type": "string",
@@ -8274,9 +7812,6 @@
                 }
               ]
             }
-          },
-          "isServerUrlSecretSet": {
-            "type": "object"
           },
           "name": {
             "type": "string",
@@ -8351,11 +7886,19 @@
               }
             ]
           },
-          "pipelineConfiguration": {
-            "description": "This is the pipeline configuration for assistant's calls.",
+          "startSpeakingPlan": {
+            "description": "This is the plan for when the assistant should start talking.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to start talking after the customer is done speaking.\n- The assistant is too fast to start talking after the customer is done speaking.\n- The assistant is so fast that it's actually interrupting the customer.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/PipelineConfiguration"
+                "$ref": "#/components/schemas/StartSpeakingPlan"
+              }
+            ]
+          },
+          "stopSpeakingPlan": {
+            "description": "This is the plan for when assistant should stop talking on customer interruption.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to recognize customer's interruption.\n- The assistant is too fast to recognize customer's interruption.\n- The assistant is getting interrupted by phrases that are just acknowledgments.\n- The assistant is getting interrupted by background noises.\n- The assistant is not properly stopping -- it starts talking right after getting interrupted.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StopSpeakingPlan"
               }
             ]
           },
@@ -8386,7 +7929,6 @@
           }
         },
         "required": [
-          "isServerUrlSecretSet",
           "id",
           "orgId",
           "createdAt",
@@ -8631,10 +8173,10 @@
           },
           "maxDurationSeconds": {
             "type": "number",
-            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 1800 (~30 minutes)",
+            "description": "This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.\n\n@default 600 (10 minutes)",
             "minimum": 10,
-            "maximum": 3600,
-            "example": 1800
+            "maximum": 21600,
+            "example": 600
           },
           "backgroundSound": {
             "type": "string",
@@ -8745,11 +8287,19 @@
               }
             ]
           },
-          "pipelineConfiguration": {
-            "description": "This is the pipeline configuration for assistant's calls.",
+          "startSpeakingPlan": {
+            "description": "This is the plan for when the assistant should start talking.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to start talking after the customer is done speaking.\n- The assistant is too fast to start talking after the customer is done speaking.\n- The assistant is so fast that it's actually interrupting the customer.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/PipelineConfiguration"
+                "$ref": "#/components/schemas/StartSpeakingPlan"
+              }
+            ]
+          },
+          "stopSpeakingPlan": {
+            "description": "This is the plan for when assistant should stop talking on customer interruption.\n\nYou should configure this if you're running into these issues:\n- The assistant is too slow to recognize customer's interruption.\n- The assistant is too fast to recognize customer's interruption.\n- The assistant is getting interrupted by phrases that are just acknowledgments.\n- The assistant is getting interrupted by background noises.\n- The assistant is not properly stopping -- it starts talking right after getting interrupted.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StopSpeakingPlan"
               }
             ]
           },
@@ -9080,7 +8630,7 @@
           },
           "sipUri": {
             "type": "string",
-            "description": "This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer."
+            "description": "This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer.\n\nThis is case-insensitive."
           }
         },
         "required": [
@@ -9305,7 +8855,7 @@
           },
           "sipUri": {
             "type": "string",
-            "description": "This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer."
+            "description": "This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer.\n\nThis is case-insensitive."
           },
           "name": {
             "type": "string",
@@ -9577,7 +9127,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -9615,7 +9165,7 @@
           },
           "instruction": {
             "type": "string",
-            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"",
+            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "minLength": 1
           }
         },
@@ -9656,7 +9206,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -9766,7 +9316,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -9852,12 +9402,12 @@
           },
           "leftSide": {
             "type": "string",
-            "description": "This is the left side of the operation.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"",
+            "description": "This is the left side of the operation.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "pattern": "ALLOWED_REGEX"
           },
           "rightSide": {
             "type": "string",
-            "description": "This is the right side of the operation.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"",
+            "description": "This is the right side of the operation.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "pattern": "ALLOWED_REGEX"
           }
         },
@@ -9880,7 +9430,7 @@
           },
           "instruction": {
             "type": "string",
-            "description": "This is the instruction which should output a boolean value when passed to a model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nYou can also talk about the current step's output or input directly:\n- \"{{output.your-property-name}} is greater than 10\"\n- \"{{input.your-property-name}} is greater than 10\"\n\nExamples:\n - \"{{input.age}} is greater than 10\"\n - \"{{input.age}} is greater than {{input.age2}}\"\n - \"{{output.age}} is greater than 10\"",
+            "description": "This is the instruction which should output a boolean value when passed to a model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{input.your-property-name}}\" for current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nYou can also talk about the current step's output or input directly:\n- \"{{output.your-property-name}} is greater than 10\"\n- \"{{input.your-property-name}} is greater than 10\"\n\nExamples:\n - \"{{input.age}} is greater than 10\"\n - \"{{input.age}} is greater than {{input.age2}}\"\n - \"{{output.age}} is greater than 10\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "minLength": 1
           }
         },
@@ -9989,7 +9539,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -10005,7 +9555,7 @@
           },
           "instruction": {
             "type": "string",
-            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"",
+            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "minLength": 1
           },
           "name": {
@@ -10046,7 +9596,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -10192,7 +9742,7 @@
           },
           "input": {
             "type": "object",
-            "description": "This is the input to the block. You can use any key-value map as input to the block.\n\nExample:\n{\n  \"name\": \"John Doe\",\n  \"age\": 20\n}\n\nYou can reference any variable in the context of the current block:\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nExample:\n{\n  \"name\": \"{{my-tool-call-step.output.name}}\",\n  \"age\": \"{{my-tool-call-step.input.age}}\",\n  \"date\": \"{{workflow.input.date}}\"\n}\n\nYou can dynamically change the key name.\n\nExample:\n{\n  \"{{my-tool-call-step.output.key-name-for-name}}\": \"{{name}}\",\n  \"{{my-tool-call-step.input.key-name-for-age}}\": \"{{age}}\",\n  \"{{workflow.input.key-name-for-date}}\": \"{{date}}\"\n}\n\nYou can represent the value as a string, number, boolean, array, or object.\n\nExample:\n{\n  \"name\": \"john\",\n  \"age\": 20,\n  \"date\": \"2021-01-01\",\n  \"metadata\": {\n    \"unique-key\": \"{{my-tool-call-step.output.unique-key}}\"\n  },\n  \"array\": [\"A\", \"B\", \"C\"],\n}"
+            "description": "This is the input to the block. You can use any key-value map as input to the block.\n\nExample:\n{\n  \"name\": \"John Doe\",\n  \"age\": 20\n}\n\nYou can reference any variable in the context of the current block:\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nExample:\n{\n  \"name\": \"{{my-tool-call-step.output.name}}\",\n  \"age\": \"{{my-tool-call-step.input.age}}\",\n  \"date\": \"{{workflow.input.date}}\"\n}\n\nYou can dynamically change the key name.\n\nExample:\n{\n  \"{{my-tool-call-step.output.key-name-for-name}}\": \"{{name}}\",\n  \"{{my-tool-call-step.input.key-name-for-age}}\": \"{{age}}\",\n  \"{{workflow.input.key-name-for-date}}\": \"{{date}}\"\n}\n\nYou can represent the value as a string, number, boolean, array, or object.\n\nExample:\n{\n  \"name\": \"john\",\n  \"age\": 20,\n  \"date\": \"2021-01-01\",\n  \"metadata\": {\n    \"unique-key\": \"{{my-tool-call-step.output.unique-key}}\"\n  },\n  \"array\": [\"A\", \"B\", \"C\"],\n}\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow."
           }
         },
         "required": [
@@ -10228,11 +9778,11 @@
           },
           "variable": {
             "type": "string",
-            "description": "This is the variable to assign a new value to.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"output.your-property-name\" for current step's output\n- \"your-step-name.output.your-property-name\" for another step's output (in the same workflow)\n- \"global.your-property-name\" for the global context\n\nThis needs to be the key path of the variable. If you use {{}}, it'll dereference that to the value of the variable before assignment. This can be useful if the path is dynamic. Example:\n- \"global.{{my-tool-call-step.output.my-key-name}}\"\n\nYou can also string interpolate multiple variables to get the key name:\n- \"global.{{my-tool-call-step.output.my-key-name-suffix}}-{{my-tool-call-step.output.my-key-name}}\"\n\nThe path to the new variable is created if it doesn't exist. Example:\n- \"global.this-does-not-exist.neither-does-this\" will create `this-does-not-exist` object with `neither-does-this` as a key"
+            "description": "This is the variable to assign a new value to.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"output.your-property-name\" for current step's output\n- \"your-step-name.output.your-property-name\" for another step's output (in the same workflow; read caveat #1)\n- \"your-block-name.output.your-property-name\" for another block's output (in the same workflow; read caveat #2)\n- \"global.your-property-name\" for the global context\n\nThis needs to be the key path of the variable. If you use {{}}, it'll dereference that to the value of the variable before assignment. This can be useful if the path is dynamic. Example:\n- \"global.{{my-tool-call-step.output.my-key-name}}\"\n\nYou can also string interpolate multiple variables to get the key name:\n- \"global.{{my-tool-call-step.output.my-key-name-suffix}}-{{my-tool-call-step.output.my-key-name}}\"\n\nThe path to the new variable is created if it doesn't exist. Example:\n- \"global.this-does-not-exist.neither-does-this\" will create `this-does-not-exist` object with `neither-does-this` as a key\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow."
           },
           "value": {
             "type": "string",
-            "description": "The value to assign to the variable.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"",
+            "description": "The value to assign to the variable.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{output.your-property-name}}\" for current step's output\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{global.your-property-name}}\" for the global context\n\nOr, you can use a constant:\n- \"1\"\n- \"text\"\n- \"true\"\n- \"false\"\n\nOr, you can mix and match with string interpolation:\n- \"{{your-property-name}}-{{input.your-property-name-2}}-1\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow.",
             "pattern": "ALLOWED_REGEX"
           }
         },
@@ -10293,7 +9843,7 @@
           },
           "input": {
             "type": "object",
-            "description": "This is the input to the block. You can use any key-value map as input to the block.\n\nExample:\n{\n  \"name\": \"John Doe\",\n  \"age\": 20\n}\n\nYou can reference any variable in the context of the current block:\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nExample:\n{\n  \"name\": \"{{my-tool-call-step.output.name}}\",\n  \"age\": \"{{my-tool-call-step.input.age}}\",\n  \"date\": \"{{workflow.input.date}}\"\n}\n\nYou can dynamically change the key name.\n\nExample:\n{\n  \"{{my-tool-call-step.output.key-name-for-name}}\": \"{{name}}\",\n  \"{{my-tool-call-step.input.key-name-for-age}}\": \"{{age}}\",\n  \"{{workflow.input.key-name-for-date}}\": \"{{date}}\"\n}\n\nYou can represent the value as a string, number, boolean, array, or object.\n\nExample:\n{\n  \"name\": \"john\",\n  \"age\": 20,\n  \"date\": \"2021-01-01\",\n  \"metadata\": {\n    \"unique-key\": \"{{my-tool-call-step.output.unique-key}}\"\n  },\n  \"array\": [\"A\", \"B\", \"C\"],\n}"
+            "description": "This is the input to the block. You can use any key-value map as input to the block.\n\nExample:\n{\n  \"name\": \"John Doe\",\n  \"age\": 20\n}\n\nYou can reference any variable in the context of the current block:\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nExample:\n{\n  \"name\": \"{{my-tool-call-step.output.name}}\",\n  \"age\": \"{{my-tool-call-step.input.age}}\",\n  \"date\": \"{{workflow.input.date}}\"\n}\n\nYou can dynamically change the key name.\n\nExample:\n{\n  \"{{my-tool-call-step.output.key-name-for-name}}\": \"{{name}}\",\n  \"{{my-tool-call-step.input.key-name-for-age}}\": \"{{age}}\",\n  \"{{workflow.input.key-name-for-date}}\": \"{{date}}\"\n}\n\nYou can represent the value as a string, number, boolean, array, or object.\n\nExample:\n{\n  \"name\": \"john\",\n  \"age\": 20,\n  \"date\": \"2021-01-01\",\n  \"metadata\": {\n    \"unique-key\": \"{{my-tool-call-step.output.unique-key}}\"\n  },\n  \"array\": [\"A\", \"B\", \"C\"],\n}\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow."
           }
         },
         "required": [
@@ -10329,7 +9879,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -10396,7 +9946,7 @@
             ]
           },
           "outputSchema": {
-            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow",
+            "description": "This is the output schema for the block. This is the output the block will return to the workflow (`{{stepName.output}}`).\n\nThese are accessible as variables:\n- ({{output.propertyName}}) in context of the block execution (step)\n- ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)\n- ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "allOf": [
               {
                 "$ref": "#/components/schemas/JsonSchema"
@@ -10458,7 +10008,7 @@
           },
           "instruction": {
             "type": "string",
-            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"",
+            "description": "This is the instruction to the model.\n\nYou can reference any variable in the context of the current block execution (step):\n- \"{{input.your-property-name}}\" for the current step's input\n- \"{{your-step-name.output.your-property-name}}\" for another step's output (in the same workflow; read caveat #1)\n- \"{{your-step-name.input.your-property-name}}\" for another step's input (in the same workflow; read caveat #1)\n- \"{{your-block-name.output.your-property-name}}\" for another block's output (in the same workflow; read caveat #2)\n- \"{{your-block-name.input.your-property-name}}\" for another block's input (in the same workflow; read caveat #2)\n- \"{{workflow.input.your-property-name}}\" for the current workflow's input\n- \"{{global.your-property-name}}\" for the global context\n\nThis can be as simple or as complex as you want it to be.\n- \"say hello and ask the user about their day!\"\n- \"collect the user's first and last name\"\n- \"user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}\"\n\nCaveats:\n1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.\n2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps.",
             "minLength": 1
           },
           "toolId": {
@@ -11865,6 +11415,10 @@
             "format": "date-time",
             "type": "string",
             "description": "This is the ISO 8601 date-time string of when the assistant was last updated."
+          },
+          "apiUrl": {
+            "type": "string",
+            "description": "This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com."
           }
         },
         "required": [
@@ -12823,6 +12377,10 @@
           "apiKey": {
             "type": "string",
             "description": "This is not returned in the API."
+          },
+          "apiUrl": {
+            "type": "string",
+            "description": "This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com."
           }
         },
         "required": [
@@ -13412,6 +12970,10 @@
           "apiKey": {
             "type": "string",
             "description": "This is not returned in the API."
+          },
+          "apiUrl": {
+            "type": "string",
+            "description": "This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com."
           }
         },
         "required": [
@@ -15657,6 +15219,7 @@
               "assistant-not-found",
               "db-error",
               "no-server-available",
+              "license-check-failed",
               "pipeline-error-openai-llm-failed",
               "pipeline-error-azure-openai-llm-failed",
               "pipeline-error-groq-llm-failed",
@@ -15727,6 +15290,7 @@
               "pipeline-error-eleven-labs-voice-disabled-by-owner",
               "pipeline-error-eleven-labs-blocked-account-in-probation",
               "pipeline-error-eleven-labs-blocked-content-against-their-policy",
+              "pipeline-error-eleven-labs-missing-samples-for-voice-clone",
               "pipeline-error-playht-request-timed-out",
               "pipeline-error-playht-invalid-voice",
               "pipeline-error-playht-unexpected-error",
@@ -16062,6 +15626,7 @@
               "assistant-not-found",
               "db-error",
               "no-server-available",
+              "license-check-failed",
               "pipeline-error-openai-llm-failed",
               "pipeline-error-azure-openai-llm-failed",
               "pipeline-error-groq-llm-failed",
@@ -16132,6 +15697,7 @@
               "pipeline-error-eleven-labs-voice-disabled-by-owner",
               "pipeline-error-eleven-labs-blocked-account-in-probation",
               "pipeline-error-eleven-labs-blocked-content-against-their-policy",
+              "pipeline-error-eleven-labs-missing-samples-for-voice-clone",
               "pipeline-error-playht-request-timed-out",
               "pipeline-error-playht-invalid-voice",
               "pipeline-error-playht-unexpected-error",

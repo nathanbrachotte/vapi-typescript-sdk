@@ -1316,42 +1316,68 @@ export interface components {
              *     @default 0 */
             numFastTurns?: number;
         };
-        AzureVoice: {
+        FormatPlan: {
             /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
+             * @description This determines whether the chunk is formatted before being sent to the voice provider. This helps with enunciation. This includes phone numbers, emails and addresses. Default `true`.
              *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
+             *     Usage:
+             *     - To rely on the voice provider's formatting logic, set this to `false`.
+             *     - To use ElevenLabs's `enableSsmlParsing` feature, set this to `false`.
              *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
+             *     If `voice.chunkPlan.enabled` is `false`, this is automatically `false` since there's no chunk to format.
              *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
+             *     @default true
              * @example true
              */
-            inputPreprocessingEnabled?: boolean;
+            enabled?: boolean;
             /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
+             * @description This is the cutoff after which a number is converted to individual digits instead of being spoken as words.
              *
-             *     Default `true` because voice generation sounds better with reformatting.
+             *     Example:
+             *     - If cutoff 2025, "12345" is converted to "1 2 3 4 5" while "1200" is converted to "twelve hundred".
              *
-             *     To disable chunk reformatting, set this to `false`.
+             *     Usage:
+             *     - If your use case doesn't involve IDs like zip codes, set this to a high value.
+             *     - If your use case involves IDs that are shorter than 5 digits, set this to a lower value.
              *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
+             *     @default 2025
+             * @example 2025
+             */
+            numberToDigitsCutoff?: number;
+        };
+        ChunkPlan: {
+            /**
+             * @description This determines whether the model output is chunked before being sent to the voice provider. Default `true`.
+             *
+             *     Usage:
+             *     - To rely on the voice provider's audio generation logic, set this to `false`.
+             *     - If seeing issues with quality, set this to `true`.
+             *
+             *     If disabled, Vapi-provided audio control tokens like <flush /> will not work.
+             *
+             *     @default true
              * @example true
              */
-            inputReformattingEnabled?: boolean;
+            enabled?: boolean;
             /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
+             * @description This is the minimum number of characters in a chunk.
              *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
+             *     Usage:
+             *     - To increase quality, set this to a higher value.
+             *     - To decrease latency, set this to a lower value.
              *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
+             *     @default 30
              * @example 30
              */
-            inputMinCharacters?: number;
+            minCharacters?: number;
             /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
+             * @description These are the punctuations that are considered valid boundaries for a chunk to be created.
              *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
+             *     Usage:
+             *     - To increase quality, constrain to fewer boundaries.
+             *     - To decrease latency, enable all.
+             *
+             *     Default is automatically set to balance the trade-off between quality and latency based on the provider.
              * @example [
              *       "。",
              *       "，",
@@ -1370,7 +1396,11 @@ export interface components {
              *     ]
              * @enum {string}
              */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
+            punctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
+            /** @description This is the plan for formatting the chunk before it is sent to the voice provider. */
+            formatPlan?: components["schemas"]["FormatPlan"];
+        };
+        AzureVoice: {
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1387,62 +1417,10 @@ export interface components {
             voiceId: ("andrew" | "brian" | "emma") | string;
             /** @description This is the speed multiplier that will be used. */
             speed?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         CartesiaVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1469,62 +1447,10 @@ export interface components {
             language?: "de" | "en" | "es" | "fr" | "ja" | "pt" | "zh";
             /** @description This is the provider-specific ID that will be used. */
             voiceId: string;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         DeepgramVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1539,62 +1465,10 @@ export interface components {
             provider: "deepgram";
             /** @description This is the provider-specific ID that will be used. */
             voiceId: ("asteria" | "luna" | "stella" | "athena" | "hera" | "orion" | "arcas" | "perseus" | "angus" | "orpheus" | "helios" | "zeus") | string;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         ElevenLabsVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1654,62 +1528,10 @@ export interface components {
              * @example 0
              */
             phoneNumberDigitPauseSeconds?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         LMNTVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1729,62 +1551,10 @@ export interface components {
              * @example null
              */
             speed?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         NeetsVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1799,62 +1569,10 @@ export interface components {
             provider: "neets";
             /** @description This is the provider-specific ID that will be used. */
             voiceId: ("vits" | "vits") | string;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         OpenAIVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1877,62 +1595,10 @@ export interface components {
              * @example null
              */
             speed?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         PlayHTVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -1978,62 +1644,10 @@ export interface components {
              * @example null
              */
             textGuidance?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         RimeAIVoice: {
-            /**
-             * @description This determines whether the model output is preprocessed into chunks before being sent to the voice provider.
-             *
-             *     Default `true` because voice generation sounds better with chunking (and reformatting them).
-             *
-             *     To send every token from the model output directly to the voice provider and rely on the voice provider's audio generation logic, set this to `false`.
-             *
-             *     If disabled, vapi-provided audio control tokens like <flush /> will not work.
-             * @example true
-             */
-            inputPreprocessingEnabled?: boolean;
-            /**
-             * @description This determines whether the chunk is reformatted before being sent to the voice provider. Many things are reformatted including phone numbers, emails and addresses to improve their enunciation.
-             *
-             *     Default `true` because voice generation sounds better with reformatting.
-             *
-             *     To disable chunk reformatting, set this to `false`.
-             *
-             *     To disable chunking completely, set `inputPreprocessingEnabled` to `false`.
-             * @example true
-             */
-            inputReformattingEnabled?: boolean;
-            /**
-             * @description This is the minimum number of characters before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults to 30.
-             *
-             *     Increasing this value might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, increasing might be a good idea if you want to give voice provider bigger chunks so it can pronounce them better.
-             *
-             *     Decreasing this value might decrease latency but might also decrease quality if the voice provider struggles to pronounce the text correctly.
-             * @example 30
-             */
-            inputMinCharacters?: number;
-            /**
-             * @description These are the punctuations that are considered valid boundaries before a chunk is created. The chunks that are sent to the voice provider for the voice generation as the model tokens are streaming in. Defaults are chosen differently for each provider.
-             *
-             *     Constraining the delimiters might add latency as it waits for the model to output a full chunk before sending it to the voice provider. On the other hand, constraining might be a good idea if you want to give voice provider longer chunks so it can sound less disjointed across chunks. Eg. ['.'].
-             * @example [
-             *       "。",
-             *       "，",
-             *       ".",
-             *       "!",
-             *       "?",
-             *       ";",
-             *       "،",
-             *       "۔",
-             *       "।",
-             *       "॥",
-             *       "|",
-             *       "||",
-             *       ",",
-             *       ":"
-             *     ]
-             * @enum {string}
-             */
-            inputPunctuationBoundaries?: "。" | "，" | "." | "!" | "?" | ";" | ")" | "،" | "۔" | "।" | "॥" | "|" | "||" | "," | ":";
             /**
              * @description This determines whether fillers are injected into the model output before inputting it into the voice provider.
              *
@@ -2059,6 +1673,8 @@ export interface components {
              * @example null
              */
             speed?: number;
+            /** @description This is the plan for chunking the model output before it is sent to the voice provider. */
+            chunkPlan?: components["schemas"]["ChunkPlan"];
         };
         TransportConfigurationTwilio: {
             /** @enum {string} */
@@ -2248,7 +1864,7 @@ export interface components {
              *     @default 10 */
             idleTimeoutSeconds?: number;
         };
-        MinWaitBeforeModelRequestConfiguration: {
+        TranscriptionEndpointingPlan: {
             /**
              * @description The minimum number of seconds to wait after transcription ending with punctuation before sending a request to the model. Defaults to 0.1.
              *
@@ -2257,7 +1873,7 @@ export interface components {
              *     @default 0.1
              * @example 0.1
              */
-            onTranscriptionWithPunctuationSeconds?: number;
+            onPunctuationSeconds?: number;
             /**
              * @description The minimum number of seconds to wait after transcription ending without punctuation before sending a request to the model. Defaults to 1.5.
              *
@@ -2266,7 +1882,7 @@ export interface components {
              *     @default 1.5
              * @example 1.5
              */
-            onTranscriptionWithoutPunctuationSeconds?: number;
+            onNoPunctuationSeconds?: number;
             /**
              * @description The minimum number of seconds to wait after transcription ending with a number before sending a request to the model. Defaults to 0.4.
              *
@@ -2275,41 +1891,81 @@ export interface components {
              *     @default 0.5
              * @example 0.5
              */
-            onTranscriptionWithNumberSeconds?: number;
+            onNumberSeconds?: number;
         };
-        PipelineConfiguration: {
+        StartSpeakingPlan: {
             /**
-             * @description The minimum number of seconds after customer speech before the assistant starts speaking. Defaults to 0.4.
+             * @description This is how long assistant waits before speaking. Defaults to 0.4.
              *
-             *     This setting helps avoid the assistant jumping in accidentally when the customer is still speaking but pauses for a moment. If customer is expected to take long pauses, set this to a higher value.
+             *     This is the minimum it will wait but if there is latency is the pipeline, this minimum will be exceeded. This is really a stopgap in case the pipeline is moving too fast.
+             *
+             *     Example:
+             *     - If model generates tokens and voice generates bytes within 100ms, the pipeline still waits 300ms before outputting speech.
+             *
+             *     Usage:
+             *     - If the customer is taking long pauses, set this to a higher value.
+             *     - If the assistant is accidentally jumping in too much, set this to a higher value.
              *
              *     @default 0.4
              * @example 0.4
              */
-            minWaitBeforeSpeakingSeconds?: number;
+            waitSeconds?: number;
             /**
-             * @description The number of words to wait for before interrupting the assistant.
+             * @description This determines if a customer speech is considered done (endpointing) using the VAP model on customer's speech. This is good for middle-of-thought detection.
+             *
+             *     Once an endpoint is triggered, the request is sent to `assistant.model`.
+             *
+             *     Default `false` since experimental.
+             *
+             *     @default false
+             * @example false
+             */
+            smartEndpointingEnabled?: boolean;
+            /** @description This determines how a customer speech is considered done (endpointing) using the transcription of customer's speech.
+             *
+             *     Once an endpoint is triggered, the request is sent to `assistant.model`. */
+            transcriptionEndpointingPlan?: components["schemas"]["TranscriptionEndpointingPlan"];
+        };
+        StopSpeakingPlan: {
+            /**
+             * @description This is the number of words that the customer has to say before the assistant will stop talking.
              *
              *     Words like "stop", "actually", "no", etc. will always interrupt immediately regardless of this value.
              *
              *     Words like "okay", "yeah", "right" will never interrupt.
              *
-             *     When set to 0, it will rely solely on the VAD (Voice Activity Detector) and will not wait for any transcription. Defaults to this (0).
+             *     When set to 0, `voiceSeconds` is used in addition to the transcriptions to determine the customer has started speaking.
+             *
+             *     Defaults to 0.
              *
              *     @default 0
              * @example 0
              */
-            numWordsToInterruptAssistant?: number;
+            numWords?: number;
             /**
-             * @description This determines if the VAP model is to be used to detect endpoints and backchannels.
+             * @description This is the seconds customer has to speak before the assistant stops talking. This uses the VAD (Voice Activity Detection) spike to determine if the customer has started speaking.
              *
-             *     Default `false` since experimental.
-             *     @default false
-             * @example false
+             *     Considerations:
+             *     - A lower value might be more responsive but could potentially pick up non-speech sounds.
+             *     - A higher value reduces false positives but might slightly delay the detection of speech onset.
+             *
+             *     This is only used if `numWords` is set to 0.
+             *
+             *     Defaults to 0.2
+             *
+             *     @default 0.2
+             * @example 0.2
              */
-            smartTurnDetectionEnabled?: boolean;
-            /** @description The minimum number of seconds after transcription before sending a request to the model. */
-            minWaitBeforeModelRequestConfiguration: components["schemas"]["MinWaitBeforeModelRequestConfiguration"];
+            voiceSeconds?: number;
+            /**
+             * @description This is the seconds to wait before the assistant will start talking again after being interrupted.
+             *
+             *     Defaults to 1.
+             *
+             *     @default 1
+             * @example 1
+             */
+            backoffSeconds?: number;
         };
         CreateAssistantDTO: {
             /** @description These are the options for the assistant's transcriber. */
@@ -2390,8 +2046,8 @@ export interface components {
             /**
              * @description This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.
              *
-             *     @default 1800 (~30 minutes)
-             * @example 1800
+             *     @default 600 (10 minutes)
+             * @example 600
              */
             maxDurationSeconds?: number;
             /**
@@ -2473,8 +2129,22 @@ export interface components {
              *
              *     Note: `firstMessage`, `voicemailMessage`, and `endCallMessage` are currently at the root level. They will be moved to `messagePlan` in the future, but will remain backwards compatible. */
             messagePlan?: components["schemas"]["MessagePlan"];
-            /** @description This is the pipeline configuration for assistant's calls. */
-            pipelineConfiguration?: components["schemas"]["PipelineConfiguration"];
+            /** @description This is the plan for when the assistant should start talking.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to start talking after the customer is done speaking.
+             *     - The assistant is too fast to start talking after the customer is done speaking.
+             *     - The assistant is so fast that it's actually interrupting the customer. */
+            startSpeakingPlan?: components["schemas"]["StartSpeakingPlan"];
+            /** @description This is the plan for when assistant should stop talking on customer interruption.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to recognize customer's interruption.
+             *     - The assistant is too fast to recognize customer's interruption.
+             *     - The assistant is getting interrupted by phrases that are just acknowledgments.
+             *     - The assistant is getting interrupted by background noises.
+             *     - The assistant is not properly stopping -- it starts talking right after getting interrupted. */
+            stopSpeakingPlan?: components["schemas"]["StopSpeakingPlan"];
             /** @description These are the credentials that will be used for the assistant calls. By default, all the credentials are available for use in the call but you can provide a subset using this. */
             credentialIds?: string[];
         };
@@ -2557,8 +2227,8 @@ export interface components {
             /**
              * @description This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.
              *
-             *     @default 1800 (~30 minutes)
-             * @example 1800
+             *     @default 600 (10 minutes)
+             * @example 600
              */
             maxDurationSeconds?: number;
             /**
@@ -2642,8 +2312,22 @@ export interface components {
              *
              *     Note: `firstMessage`, `voicemailMessage`, and `endCallMessage` are currently at the root level. They will be moved to `messagePlan` in the future, but will remain backwards compatible. */
             messagePlan?: components["schemas"]["MessagePlan"];
-            /** @description This is the pipeline configuration for assistant's calls. */
-            pipelineConfiguration?: components["schemas"]["PipelineConfiguration"];
+            /** @description This is the plan for when the assistant should start talking.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to start talking after the customer is done speaking.
+             *     - The assistant is too fast to start talking after the customer is done speaking.
+             *     - The assistant is so fast that it's actually interrupting the customer. */
+            startSpeakingPlan?: components["schemas"]["StartSpeakingPlan"];
+            /** @description This is the plan for when assistant should stop talking on customer interruption.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to recognize customer's interruption.
+             *     - The assistant is too fast to recognize customer's interruption.
+             *     - The assistant is getting interrupted by phrases that are just acknowledgments.
+             *     - The assistant is getting interrupted by background noises.
+             *     - The assistant is not properly stopping -- it starts talking right after getting interrupted. */
+            stopSpeakingPlan?: components["schemas"]["StopSpeakingPlan"];
             /** @description These are the credentials that will be used for the assistant calls. By default, all the credentials are available for use in the call but you can provide a subset using this. */
             credentialIds?: string[];
         };
@@ -2732,7 +2416,9 @@ export interface components {
             number?: string;
             /** @description This is the SIP URI of the customer. */
             sipUri?: string;
-            /** @description This is the name of the customer. This is just for your own reference. */
+            /** @description This is the name of the customer. This is just for your own reference.
+             *
+             *     For SIP inbound calls, this is extracted from the `From` SIP header with format `"Display Name" <sip:username@domain>`. */
             name?: string;
         };
         CreateCallDTO: {
@@ -2856,7 +2542,7 @@ export interface components {
              * @description This is the explanation for how the call ended.
              * @enum {string}
              */
-            endedReason?: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
+            endedReason?: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "license-check-failed" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-eleven-labs-missing-samples-for-voice-clone" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
             /** @description This is the destination where the call ended up being transferred to. If the call was not transferred, this will be empty. */
             destination?: components["schemas"]["TransferDestinationNumber"] | components["schemas"]["TransferDestinationSip"];
             /** @description This is the unique identifier for the call. */
@@ -3068,8 +2754,8 @@ export interface components {
             /**
              * @description This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.
              *
-             *     @default 1800 (~30 minutes)
-             * @example 1800
+             *     @default 600 (10 minutes)
+             * @example 600
              */
             maxDurationSeconds?: number;
             /**
@@ -3107,7 +2793,6 @@ export interface components {
             modelOutputInMessagesEnabled?: boolean;
             /** @description These are the configurations to be passed to the transport providers of assistant's calls, like Twilio. You can store multiple configurations for different transport providers. For a call, only the configuration matching the call transport provider is used. */
             transportConfigurations?: components["schemas"]["TransportConfigurationTwilio"][];
-            isServerUrlSecretSet: Record<string, never>;
             /** @description This is the name of the assistant.
              *
              *     This is required when you want to transfer between assistants in a call. */
@@ -3152,8 +2837,22 @@ export interface components {
              *
              *     Note: `firstMessage`, `voicemailMessage`, and `endCallMessage` are currently at the root level. They will be moved to `messagePlan` in the future, but will remain backwards compatible. */
             messagePlan?: components["schemas"]["MessagePlan"];
-            /** @description This is the pipeline configuration for assistant's calls. */
-            pipelineConfiguration?: components["schemas"]["PipelineConfiguration"];
+            /** @description This is the plan for when the assistant should start talking.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to start talking after the customer is done speaking.
+             *     - The assistant is too fast to start talking after the customer is done speaking.
+             *     - The assistant is so fast that it's actually interrupting the customer. */
+            startSpeakingPlan?: components["schemas"]["StartSpeakingPlan"];
+            /** @description This is the plan for when assistant should stop talking on customer interruption.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to recognize customer's interruption.
+             *     - The assistant is too fast to recognize customer's interruption.
+             *     - The assistant is getting interrupted by phrases that are just acknowledgments.
+             *     - The assistant is getting interrupted by background noises.
+             *     - The assistant is not properly stopping -- it starts talking right after getting interrupted. */
+            stopSpeakingPlan?: components["schemas"]["StopSpeakingPlan"];
             /** @description These are the credentials that will be used for the assistant calls. By default, all the credentials are available for use in the call but you can provide a subset using this. */
             credentialIds?: string[];
             /** @description This is the unique identifier for the assistant. */
@@ -3250,8 +2949,8 @@ export interface components {
             /**
              * @description This is the maximum number of seconds that the call will last. When the call reaches this duration, it will be ended.
              *
-             *     @default 1800 (~30 minutes)
-             * @example 1800
+             *     @default 600 (10 minutes)
+             * @example 600
              */
             maxDurationSeconds?: number;
             /**
@@ -3333,8 +3032,22 @@ export interface components {
              *
              *     Note: `firstMessage`, `voicemailMessage`, and `endCallMessage` are currently at the root level. They will be moved to `messagePlan` in the future, but will remain backwards compatible. */
             messagePlan?: components["schemas"]["MessagePlan"];
-            /** @description This is the pipeline configuration for assistant's calls. */
-            pipelineConfiguration?: components["schemas"]["PipelineConfiguration"];
+            /** @description This is the plan for when the assistant should start talking.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to start talking after the customer is done speaking.
+             *     - The assistant is too fast to start talking after the customer is done speaking.
+             *     - The assistant is so fast that it's actually interrupting the customer. */
+            startSpeakingPlan?: components["schemas"]["StartSpeakingPlan"];
+            /** @description This is the plan for when assistant should stop talking on customer interruption.
+             *
+             *     You should configure this if you're running into these issues:
+             *     - The assistant is too slow to recognize customer's interruption.
+             *     - The assistant is too fast to recognize customer's interruption.
+             *     - The assistant is getting interrupted by phrases that are just acknowledgments.
+             *     - The assistant is getting interrupted by background noises.
+             *     - The assistant is not properly stopping -- it starts talking right after getting interrupted. */
+            stopSpeakingPlan?: components["schemas"]["StopSpeakingPlan"];
             /** @description These are the credentials that will be used for the assistant calls. By default, all the credentials are available for use in the call but you can provide a subset using this. */
             credentialIds?: string[];
         };
@@ -3558,7 +3271,9 @@ export interface components {
              *
              *     Same precedence logic as serverUrl. */
             serverUrlSecret?: string;
-            /** @description This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer. */
+            /** @description This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer.
+             *
+             *     This is case-insensitive. */
             sipUri: string;
         };
         CreateByoPhoneNumberDTO: {
@@ -3705,7 +3420,9 @@ export interface components {
              * @enum {string}
              */
             provider: "vapi";
-            /** @description This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer. */
+            /** @description This is the SIP URI of the phone number. You can SIP INVITE this. The assistant attached to this number will answer.
+             *
+             *     This is case-insensitive. */
             sipUri: string;
             /** @description This is the name of the phone number. This is just for your own reference. */
             name?: string;
@@ -3877,7 +3594,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This block is used for conversation. This can be a free flow conversation or a conversation with a specific goal like collecting some information.
@@ -3936,15 +3658,21 @@ export interface components {
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{input.your-property-name}}" for the current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
              *     This can be as simple or as complex as you want it to be.
              *     - "say hello and ask the user about their day!"
              *     - "collect the user's first and last name"
-             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}" */
+             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             instruction: string;
         };
         ToolCallBlock: {
@@ -3960,7 +3688,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This block makes a tool call. (enum property replaced by openapi-typescript)
@@ -4001,7 +3734,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This creates a workflow which can contain any number of steps (block executions). (enum property replaced by openapi-typescript)
@@ -4045,8 +3783,10 @@ export interface components {
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{output.your-property-name}}" for current step's output
              *     - "{{input.your-property-name}}" for current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
@@ -4057,15 +3797,21 @@ export interface components {
              *     - "false"
              *
              *     Or, you can mix and match with string interpolation:
-             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1" */
+             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             leftSide: string;
             /** @description This is the right side of the operation.
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{output.your-property-name}}" for current step's output
              *     - "{{input.your-property-name}}" for current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
@@ -4076,7 +3822,11 @@ export interface components {
              *     - "false"
              *
              *     Or, you can mix and match with string interpolation:
-             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1" */
+             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             rightSide: string;
         };
         ModelBasedCondition: {
@@ -4090,8 +3840,10 @@ export interface components {
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{output.your-property-name}}" for current step's output
              *     - "{{input.your-property-name}}" for current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
@@ -4102,7 +3854,11 @@ export interface components {
              *     Examples:
              *      - "{{input.age}} is greater than 10"
              *      - "{{input.age}} is greater than {{input.age2}}"
-             *      - "{{output.age}} is greater than 10" */
+             *      - "{{output.age}} is greater than 10"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             instruction: string;
         };
         BlockStartMessage: {
@@ -4140,7 +3896,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This block is used for conversation. This can be a free flow conversation or a conversation with a specific goal like collecting some information.
@@ -4183,15 +3944,21 @@ export interface components {
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{input.your-property-name}}" for the current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
              *     This can be as simple or as complex as you want it to be.
              *     - "say hello and ask the user about their day!"
              *     - "collect the user's first and last name"
-             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}" */
+             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             instruction: string;
             /** @description This is the name of the block. This is just for your reference. */
             name?: string;
@@ -4209,7 +3976,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This block makes a tool call. (enum property replaced by openapi-typescript)
@@ -4256,8 +4028,10 @@ export interface components {
              *     }
              *
              *     You can reference any variable in the context of the current block:
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
@@ -4288,7 +4062,11 @@ export interface components {
              *         "unique-key": "{{my-tool-call-step.output.unique-key}}"
              *       },
              *       "array": ["A", "B", "C"],
-             *     } */
+             *     }
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow. */
             input?: Record<string, never>;
         };
         AssignmentMutation: {
@@ -4303,7 +4081,8 @@ export interface components {
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "output.your-property-name" for current step's output
-             *     - "your-step-name.output.your-property-name" for another step's output (in the same workflow)
+             *     - "your-step-name.output.your-property-name" for another step's output (in the same workflow; read caveat #1)
+             *     - "your-block-name.output.your-property-name" for another block's output (in the same workflow; read caveat #2)
              *     - "global.your-property-name" for the global context
              *
              *     This needs to be the key path of the variable. If you use {{}}, it'll dereference that to the value of the variable before assignment. This can be useful if the path is dynamic. Example:
@@ -4313,13 +4092,18 @@ export interface components {
              *     - "global.{{my-tool-call-step.output.my-key-name-suffix}}-{{my-tool-call-step.output.my-key-name}}"
              *
              *     The path to the new variable is created if it doesn't exist. Example:
-             *     - "global.this-does-not-exist.neither-does-this" will create `this-does-not-exist` object with `neither-does-this` as a key */
+             *     - "global.this-does-not-exist.neither-does-this" will create `this-does-not-exist` object with `neither-does-this` as a key
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow. */
             variable: string;
             /** @description The value to assign to the variable.
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{output.your-property-name}}" for current step's output
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
              *     - "{{global.your-property-name}}" for the global context
              *
              *     Or, you can use a constant:
@@ -4329,7 +4113,11 @@ export interface components {
              *     - "false"
              *
              *     Or, you can mix and match with string interpolation:
-             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1" */
+             *     - "{{your-property-name}}-{{input.your-property-name-2}}-1"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow. */
             value: string;
         };
         CallbackStep: {
@@ -4358,8 +4146,10 @@ export interface components {
              *     }
              *
              *     You can reference any variable in the context of the current block:
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
@@ -4390,7 +4180,11 @@ export interface components {
              *         "unique-key": "{{my-tool-call-step.output.unique-key}}"
              *       },
              *       "array": ["A", "B", "C"],
-             *     } */
+             *     }
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.input/output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.input/output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow. */
             input?: Record<string, never>;
         };
         CreateWorkflowBlockDTO: {
@@ -4406,7 +4200,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /**
              * @description This creates a workflow which can contain any number of steps (block executions). (enum property replaced by openapi-typescript)
@@ -4431,7 +4230,12 @@ export interface components {
              *
              *     These are accessible as variables:
              *     - ({{output.propertyName}}) in context of the block execution (step)
-             *     - ({{stepName.output.propertyName}}) in context of the workflow */
+             *     - ({{stepName.output.propertyName}}) in context of the workflow (read caveat #1)
+             *     - ({{blockName.output.propertyName}}) in context of the workflow (read caveat #2)
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             outputSchema?: components["schemas"]["JsonSchema"];
             /** @description This is the tool that the block will call. To use an existing tool, use `toolId`. */
             tool?: components["schemas"]["CreateDtmfToolDTO"] | components["schemas"]["CreateEndCallToolDTO"] | components["schemas"]["CreateVoicemailToolDTO"] | components["schemas"]["CreateFunctionToolDTO"] | components["schemas"]["CreateGhlToolDTO"] | components["schemas"]["CreateMakeToolDTO"] | components["schemas"]["CreateTransferCallToolDTO"];
@@ -4443,15 +4247,21 @@ export interface components {
              *
              *     You can reference any variable in the context of the current block execution (step):
              *     - "{{input.your-property-name}}" for the current step's input
-             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow)
-             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow)
+             *     - "{{your-step-name.output.your-property-name}}" for another step's output (in the same workflow; read caveat #1)
+             *     - "{{your-step-name.input.your-property-name}}" for another step's input (in the same workflow; read caveat #1)
+             *     - "{{your-block-name.output.your-property-name}}" for another block's output (in the same workflow; read caveat #2)
+             *     - "{{your-block-name.input.your-property-name}}" for another block's input (in the same workflow; read caveat #2)
              *     - "{{workflow.input.your-property-name}}" for the current workflow's input
              *     - "{{global.your-property-name}}" for the global context
              *
              *     This can be as simple or as complex as you want it to be.
              *     - "say hello and ask the user about their day!"
              *     - "collect the user's first and last name"
-             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}" */
+             *     - "user is {{input.firstName}} {{input.lastName}}. their age is {{input.age}}. ask them about their salary and if they might be interested in buying a house. we offer {{input.offer}}"
+             *
+             *     Caveats:
+             *     1. a workflow can execute a step multiple times. example, if a loop is used in the graph. {{stepName.output/input.propertyName}} will reference the latest usage of the step.
+             *     2. a workflow can execute a block multiple times. example, if a step is called multiple times or if a block is used in multiple steps. {{blockName.output/input.propertyName}} will reference the latest usage of the block. this liquid variable is just provided for convenience when creating blocks outside of a workflow with steps. */
             instruction?: string;
             /** @description This is the id of the tool that the block will call. To use a transient tool, use `tool`. */
             toolId?: string;
@@ -5144,6 +4954,8 @@ export interface components {
              * @description This is the ISO 8601 date-time string of when the assistant was last updated.
              */
             updatedAt: string;
+            /** @description This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com. */
+            apiUrl?: string;
         };
         GladiaCredential: {
             /** @enum {string} */
@@ -5572,6 +5384,8 @@ export interface components {
             provider: "deepgram";
             /** @description This is not returned in the API. */
             apiKey: string;
+            /** @description This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com. */
+            apiUrl?: string;
         };
         CreateGladiaCredentialDTO: {
             /** @enum {string} */
@@ -5762,6 +5576,8 @@ export interface components {
             provider: "deepgram";
             /** @description This is not returned in the API. */
             apiKey: string;
+            /** @description This can be used to point to an onprem Deepgram instance. Defaults to api.deepgram.com. */
+            apiUrl?: string;
         };
         UpdateGladiaCredentialDTO: {
             /** @enum {string} */
@@ -6653,7 +6469,7 @@ export interface components {
              * @description This is the reason the call ended.
              * @enum {string}
              */
-            endedReason: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
+            endedReason: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "license-check-failed" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-eleven-labs-missing-samples-for-voice-clone" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
             /** @description These are the message history of the call. The format is not OpenAI format but a custom VAPI format. */
             messages?: (components["schemas"]["UserMessage"] | components["schemas"]["SystemMessage"] | components["schemas"]["BotMessage"] | components["schemas"]["FunctionCallMessage"] | components["schemas"]["ToolCallMessage"] | components["schemas"]["ToolCallResultMessage"] | components["schemas"]["FunctionResultMessage"])[];
             /** @description This is the URL of the call recording. */
@@ -6787,7 +6603,7 @@ export interface components {
              * @description This is the reason the call ended. This is only sent if the status is "ended".
              * @enum {string}
              */
-            endedReason?: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
+            endedReason?: "assistant-error" | "assistant-not-found" | "db-error" | "no-server-available" | "license-check-failed" | "pipeline-error-openai-llm-failed" | "pipeline-error-azure-openai-llm-failed" | "pipeline-error-groq-llm-failed" | "pipeline-error-openai-voice-failed" | "pipeline-error-cartesia-voice-failed" | "pipeline-error-deepgram-transcriber-failed" | "pipeline-error-deepgram-voice-failed" | "pipeline-error-gladia-transcriber-failed" | "pipeline-error-eleven-labs-voice-failed" | "pipeline-error-playht-voice-failed" | "pipeline-error-lmnt-voice-failed" | "pipeline-error-azure-voice-failed" | "pipeline-error-rime-ai-voice-failed" | "pipeline-error-neets-voice-failed" | "pipeline-no-available-model" | "worker-shutdown" | "twilio-failed-to-connect-call" | "unknown-error" | "vonage-disconnected" | "vonage-failed-to-connect-call" | "phone-call-provider-bypass-enabled-but-no-call-received" | "vapi-error-phone-call-worker-setup-socket-error" | "vapi-error-phone-call-worker-worker-setup-socket-timeout" | "vapi-error-phone-call-worker-could-not-find-call" | "vapi-error-phone-call-worker-call-never-connected" | "vapi-error-web-call-worker-setup-failed" | "assistant-not-invalid" | "assistant-not-provided" | "call-start-error-neither-assistant-nor-server-set" | "assistant-request-failed" | "assistant-request-returned-error" | "assistant-request-returned-unspeakable-error" | "assistant-request-returned-invalid-assistant" | "assistant-request-returned-no-assistant" | "assistant-request-returned-forwarding-phone-number" | "assistant-ended-call" | "assistant-said-end-call-phrase" | "assistant-forwarded-call" | "assistant-join-timed-out" | "customer-busy" | "customer-ended-call" | "customer-did-not-answer" | "customer-did-not-give-microphone-permission" | "assistant-said-message-with-end-call-enabled" | "exceeded-max-duration" | "manually-canceled" | "phone-call-provider-closed-websocket" | "pipeline-error-anthropic-llm-failed" | "pipeline-error-together-ai-llm-failed" | "pipeline-error-anyscale-llm-failed" | "pipeline-error-openrouter-llm-failed" | "pipeline-error-perplexity-ai-llm-failed" | "pipeline-error-deepinfra-llm-failed" | "pipeline-error-runpod-llm-failed" | "pipeline-error-custom-llm-llm-failed" | "pipeline-error-eleven-labs-voice-not-found" | "pipeline-error-eleven-labs-quota-exceeded" | "pipeline-error-eleven-labs-unauthorized-access" | "pipeline-error-eleven-labs-unauthorized-to-access-model" | "pipeline-error-eleven-labs-professional-voices-only-for-creator-plus" | "pipeline-error-eleven-labs-blocked-free-plan-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-concurrent-requests-and-requested-upgrade" | "pipeline-error-eleven-labs-blocked-using-instant-voice-clone-and-requested-upgrade" | "pipeline-error-eleven-labs-system-busy-and-requested-upgrade" | "pipeline-error-eleven-labs-voice-not-fine-tuned" | "pipeline-error-eleven-labs-invalid-api-key" | "pipeline-error-eleven-labs-invalid-voice-samples" | "pipeline-error-eleven-labs-voice-disabled-by-owner" | "pipeline-error-eleven-labs-blocked-account-in-probation" | "pipeline-error-eleven-labs-blocked-content-against-their-policy" | "pipeline-error-eleven-labs-missing-samples-for-voice-clone" | "pipeline-error-playht-request-timed-out" | "pipeline-error-playht-invalid-voice" | "pipeline-error-playht-unexpected-error" | "pipeline-error-playht-out-of-credits" | "pipeline-error-playht-rate-limit-exceeded" | "pipeline-error-playht-502-gateway-error" | "pipeline-error-playht-504-gateway-error" | "pipeline-error-gladia-transcriber-failed" | "sip-gateway-failed-to-connect-call" | "silence-timed-out" | "voicemail" | "vonage-rejected";
             /** @description These are the conversation messages of the call. This is only sent if the status is "forwarding". */
             messages?: (components["schemas"]["UserMessage"] | components["schemas"]["SystemMessage"] | components["schemas"]["BotMessage"] | components["schemas"]["FunctionCallMessage"] | components["schemas"]["ToolCallMessage"] | components["schemas"]["ToolCallResultMessage"] | components["schemas"]["FunctionResultMessage"])[];
             /** @description These are the conversation messages of the call. This is only sent if the status is "forwarding". */
