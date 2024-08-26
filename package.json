@@ -19,11 +19,12 @@
   "author": "Nathan Brachotte <hey+vts@nathanbrachotte.dev> (https://nathanbrachotte.dev)",
   "repository": {
     "type": "git",
-    "url": "git+https://nathanbrachotte/vapi-typescript-sdk"
+    "url": "git+https://github.com/nathanbrachotte/vapi-typescript-sdk.git"
   },
   "files": [
     "dist"
   ],
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "ci": "npm run build && npm run prettier:check && npm run test",
