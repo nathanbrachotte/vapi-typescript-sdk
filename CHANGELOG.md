@@ -1,5 +1,11 @@
 # vapi-typescript-sdk
 
+## 1.2.0
+
+### Minor Changes
+
+- 063424f: Update types 26.08.24
+
 ## 0.0.2
 
 ### Patch Changes
