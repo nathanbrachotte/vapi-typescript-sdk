@@ -28,9 +28,11 @@ pnpm add vapi-typescript-sdk
 ## Use
 
 ### Example
+
 <img src="https://github.com/user-attachments/assets/453f4307-75bf-4081-aadc-3f8f4565f082" width="400">
 
 ### Boilerplate
+
 ```ts
 import { vapiClient } from 'vapi-typescript-sdk';
 
@@ -50,8 +52,6 @@ const calls = await GET('/call', {
   },
 });
 ```
-
-
 
 ## API Reference
 
